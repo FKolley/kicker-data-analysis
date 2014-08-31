@@ -18,7 +18,7 @@ def start_browser():
     '''
     browser = mechanize.Browser()
     browser.set_handle_robots(False)
-    browser.addheaders = [('User-agent', ('Mozilla/4.0'))]
+    browser.addheaders = [('User-agent', ('Mozilla/4.0'))] # pretend you are not a robot
     return browser
 
 def kicker_login(username, password):
@@ -29,7 +29,7 @@ def kicker_login(username, password):
     login_url = 'https://secure.kicker.de/community/login'
     browser = start_browser()
     browser.open( login_url )
-    browser.select_form( nr=2 )
+    browser.select_form( nr=2 ) # thats where the login form is.
     browser.form['nickname'] = username
     browser.form['password'] = password
     browser.submit()
@@ -59,9 +59,11 @@ def get_club_list( year=datetime.date.today().year ):
     if len(club_list) == 0:
         warnings.warn('No clubs found. get_club_list() returned an empty list. Used URL: '+clubs_url)
     return club_list
+
+
     
 
 
 if __name__ == '__main__':
-    clubs = get_club_list(year=1963)
+    clubs = get_club_list(year=2000)
     print clubs
