@@ -1,0 +1,65 @@
+* TODO GitHub project
+  https://github.com/FKolley/kicker-data-analysis
+  - learn how to properly commit new versions
+  - improve usability:
+    exectuatlbes with command line options?
+    configuration files?
+    write documentation
+    
+* TODO Scraping methods for www.kicker.de
+** DONE player statistics
+   a web scraper for www.kicker.de that extract statistics for all Bundesliga players
+*** TODO get_player_statistics()
+    -comment player info in the beginning of file
+    -specify competition 
+    getting statistics for all the 1160 (why so many?) players took 17438sec
+    - modify function such that it is possible to get statistics by
+      player name or id (or all the players of a specific club?)
+
+** TODO club statistics
+** list of functions
+*** start_browser()
+    returns a mechanize browser suitable for web scraping
+*** kicker_login(username, password)
+    returns a mechanize browser that is logged in www.kicker.de
+*** get_club_list(year)
+    returns a list of clubs that played in the Bundesliga in year
+    defaul year is the present one
+*** get_player_statistics(path)
+    scrapes www.kicker.de and creates data sheets for each Bundesliga player.
+    The data sheets are saved in the directory passed by "path"
+*** make_players_database(path)
+    path: the directory where the player data sheets are located
+    creates players.dat with information for each player. This is very 
+    useful for player selection in the analysis part
+    
+* TODO Data analysis
+** TODO Data sheets
+    - clean up files (there are some enyoing underscores)
+    - Does it make sence to write a SQL data base? (strong pro: learn SQL)
+** TODO Analyis
+    - put data into useful data frames -> calculate kicker manager points from data
+    - write plotting functions
+      
+** list of functions
+*** player_season( filename )
+    takes a player data sheet and returns a pandas data fram with the data
+    columns: 'H/A', 'Gegner', 'Ergebnis', 'Note', 'Tore', 'Elfm', 'Ass',
+    'Scp', 'Eing', 'Ausg', 'Rot', 'GelbRot', 'Gelb', 'Punkte'
+*** player_total( prefix, path )
+    prefix: prefix of the name of the data sheet. Example: 'philipp-lahm_id-26870'
+    path: directory of the data sheets
+    Summarizes all available seasons for a player
+    returns pandas data frame
+    columns: 'Note', 'Tore', 'Ass', 'Scp', 'Rot', 'GelbRot', 'Gelb', 'Punkte',
+    'Einsaetze', 'Spielminuten'
+*** players_database( filename )
+    filename: the file created by scraper.make_players_database(). Default:
+    players.dat
+    Returns pandas data frame
+    Columns: 'Nachname', 'Vorname', 'id', 'Position', 'Nummer', 'Verein',
+    'Geburtstag', 'Groesse', 'Gewicht', 'Nation', 'prefix'
+    
+* TODO Interactive manager strategies
+** TODO Best team of last year
+** TODO Point extrapolation
