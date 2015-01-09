@@ -11,9 +11,71 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import subprocess
 
+def get_season( filename ):
+    '''
+    takes a season data afile that was generated with scraper.py
+    and returns pandas data from with columns:
+    Spieltag, Tag, Datum, Zeit, Heim, Gast, Tore (H), Tore (A), Tore Hz (H),
+    Tore Hz (A)
+    '''
+    df = pd.read_csv( filename, sep='\t', na_values='-', skiprows=1 )
+    df.columns = ['Spieltag', 'Tag', 'Datum', 'Zeit', 'Heim', 'Gast', 'Tore (H)', 'Tore (A)',\
+                      'Tore Hz (H)', 'Tore Hz (A)']
+    return df
+
+def get_table(season, three_points=True):
+    if three_points:
+        win = 3
+    else:
+        win = 2
+    draw = 1
+    clubs1 = list(season[ season['Spieltag'] == 1 ]['Heim'])
+    clubs2 = list(season[ season['Spieltag'] == 1 ]['Gast'])
+    clubs = clubs1 + clubs2
+    season['Punkte (H)'] = season['Tore (H)'] - season['Tore (A)']
+    season['Punkte (A)'] = season['Tore (A)'] - season['Tore (H)']
+    def assign_points( x ):
+        if x > 0: 
+            return win
+        elif x == 0:
+            return draw
+        else: 
+            return 0
+    season['Punkte (H)'] = map(assign_points, season['Punkte (H)'])
+    season['Punkte (A)'] = map(assign_points, season['Punkte (A)'])
+    table = []
+    for club in clubs:
+        #print club
+        points_H = season[ season['Heim'] == club ]['Punkte (H)'].sum()
+        points_A = season[ season['Gast'] == club ]['Punkte (A)'].sum()
+        points = points_H + points_A
+        tore_H = season[ season['Heim'] == club ]['Tore (H)'].sum()
+        tore_A = season[ season['Gast'] == club ]['Tore (A)'].sum()
+        tore = tore_H + tore_A
+        gtore_H = season[ season['Heim'] == club ]['Tore (A)'].sum()
+        gtore_A = season[ season['Gast'] == club ]['Tore (H)'].sum()
+        gtore = gtore_H + gtore_A
+        siege_H = len(season[ (season['Heim'] == club) & (season['Punkte (H)'] == win) ].index)
+        niederlagen_H = len(season[ (season['Heim'] == club) & (season['Punkte (H)'] == 0) ].index)
+        draw_H = len(season[ (season['Heim'] == club) & (season['Punkte (H)'] == 1) ].index)
+        siege_A = len(season[ (season['Gast'] == club) & (season['Punkte (A)'] == win) ].index)
+        niederlagen_A = len(season[ (season['Gast'] == club) & (season['Punkte (A)'] == 0) ].index)
+        draw_A = len(season[ (season['Gast'] == club) & (season['Punkte (A)'] == 1) ].index)
+        siege = siege_H + siege_A
+        niederlagen = niederlagen_H + niederlagen_A
+        draws = draw_H + draw_A
+        table.append( [club, points, tore, gtore, siege, draws, niederlagen, tore_H, tore_A, gtore_H, gtore_A, points_H, points_A, siege_H, draw_H, niederlagen_H, siege_A, draw_A, niederlagen_A] )
+
+    df = pd.DataFrame( table )
+    df.columns = ['Verein', 'Punkte', 'Tore', 'Gegentore', 'Siege', 'Unentschieden', 'Niederlagen', 'Tore (H)', 'Tore (A)', 'Gegentore (H)', 'Gegntore (A)', 'Punkte (H)', 'Punkte (A)', 'Siege (H)', 'Untentschieden (H)', 'Niederlagen (H)', 'Siege (A)', 'Unentschieden (A)', 'Niederlagen (A)']
+    df.sort( 'Punkte', ascending=False, inplace=True)
+    df.index = range(1, len(df.index)+1)
+    return df
+
+
 def player_season( filename ):
     '''
-    takes a player data file that was constructed by scraper.py
+    takes a player data file that was genreated with scraper.py
     return pandas data frame with columns:
     'H/A', 'Gegner', 'Ergebnis', 'Note', 'Tore', 'Elfm', 'Ass',
     'Scp', 'Eing', 'Ausg', 'Rot', 'GelbRot', 'Gelb', 'Punkte'
@@ -134,6 +196,13 @@ def players_database( filename ):
 
 
 ####################################################################
+# Plotting #########################################################
+####################################################################
+def data_disclaimer( axes, position, source='www.kicker.de', color='grey' ):
+    axes.annotate( 'Daten von '+source, xy=position, \
+                       xycoords='axes fraction', fontsize=10, color=color),
+
+####################################################################
 # Helper functions #################################################
 ####################################################################
 
@@ -239,4 +308,25 @@ def _read_file_header(file_instance):
             break
     name = surname+' '+name
     return season, name, position, club, birthday, height, weight, nation, competition, i
+    
+###########################################################
+# Helper functions ########################################
+###########################################################
+
+def get_season_string(year):
+    '''
+    Example: year=2014 -> return '2014-15'
+    '''
+    year_p1 = str(year%100+1)
+    if len(year_p1) == 1: # prepend a 0
+        year_p1 = '0' + year_p1
+    if len(year_p1) == 3: # get rid of the 1
+        year_p1 = year_p1[1:]
+    assert len(year_p1) == 2 # make sure that we have a proper date string
+    return str(year)+'-'+year_p1
+
+
+
+if __name__ == '__main__':
+    pass
     

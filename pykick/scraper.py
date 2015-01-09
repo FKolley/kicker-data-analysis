@@ -10,6 +10,8 @@ import datetime
 import warnings
 import timeit
 import subprocess
+import pandas as pd
+import numpy as np
 
 
 def start_browser():
@@ -264,6 +266,107 @@ def make_players_database(path):
                          +player[8]+'\t'+player[9]+'\t'+player[10]+'\n' )
 
 
+
+def get_seasons(path):
+    '''
+    generates a file for each season from 1963 to today with results of
+    all the games.
+    path: directory where the files are stored
+    '''
+    browser = start_browser() # open a browser
+    years = range(1963, datetime.date.today().year) # years 1963 - today
+    #years = [2007]
+    browser = start_browser() # open kicker scraping browser
+    for year in years: # loop through seasons 
+        season = _get_season_string( year )
+        url = 'http://www.kicker.de/new/fusball/bundesliga/spieltag/1-bundesliga/'+season+'/-1/0/spieltag.html'
+        content = browser.open( url )
+        soup = BeautifulSoup(content)
+        spieltage = soup.find_all('table', {'class':'tStat tab1-bundesliga'})
+        n = 1
+        output = '# Saison '+season+'\n' 
+        output += '# Spieltag\t# Tag\t# Datum\t# Zeit\t# Heim\t # Gast\t# Tore (H)\t# Tore (A)\t# Tore Hz (H)\t# Tore Hz (A)\n'
+        for spieltag in spieltage:
+            for row in spieltag.find_all('tr'):
+                columns = row.find_all('td')
+                if len(columns) == 9:
+                    #print columns
+                    if len(columns[0].text.strip('\n')) == 2:
+                        day = columns[0].text.strip('\n')
+                    if columns[1].text.strip('\n').find(':') != -1:
+                        date, time = columns[1].text.strip('\n').split()
+                    heim = columns[2].text.strip('\n')
+                    gast = columns[4].text.strip('\n')
+                    ergebnis = columns[5].text.strip('\n')
+                    heim_tore, gast_tore, heim_tore_h, gast_tore_h = _get_goals(ergebnis)
+                    output += str(n)+'\t'+ \
+                              day+'\t'+ \
+                              date+'\t'+ \
+                              time+'\t'+ \
+                              heim+'\t'+ \
+                              gast+'\t'+ \
+                              heim_tore+'\t'+ \
+                              gast_tore+'\t'+ \
+                              heim_tore_h+'\t'+ \
+                              gast_tore_h+'\n'
+            n = n + 1 
+        filename = 'season_'+season
+        print filename
+        with open( path+filename, 'w+') as f:
+            f.write( output.encode('utf-8') )
+
+
+def get_table(type='total'):
+    '''
+    returns a pandas data frame with the current Bundesliga table.
+    options: 'total', 'home', 'guest'.
+    'total' is default
+    '''
+
+    # make sure that a valid option was provided
+    assert type == 'total' or type == 'home' or type == 'guest', \
+        'Error. Wrong type: "'+type+'". Options are "total", "home", "guest".'
+
+    # url to the kicker.de webpage with the current Bundesliga table
+    url = 'http://www.kicker.de/news/fussball/bundesliga/spieltag/1-bundesliga/2014-15/spieltag.html'
+    
+    print 'Getting Bundesliga '+type+' table from url:', url
+
+    # read out table
+    browser = start_browser()
+    content = browser.open( url )
+    soup = BeautifulSoup(content)
+    tables = soup.find_all('table', {'summary':'Tabelle'})    
+    table = tables[0]
+    table_data = []
+    for row in table.find_all('tr'):
+        col_data = []
+        for col in row.find_all('td'):
+            col_data.append( col.text.strip('\n') )
+        
+        # clean data
+        if len(col_data) > 1:
+            col_data = col_data[2:3] + col_data[4:5] + col_data[6:9] + col_data[10].split(':') + col_data[11:12] + col_data[13:]
+
+        table_data.append( col_data )
+    
+    # clean data
+    table_data = table_data[1::2]
+
+    # create Pandas data frame
+    cols = ['Verein', 'Spiele', 'Siege', 'Unentschieden', \
+                'Niederlagen', 'Tore', 'Gegentore', 'Differenz', 'Punkte']
+    table = pd.DataFrame( table_data, columns=cols, index=range(1, 19) )
+
+    # convert to integers
+    table[ ['Spiele', 'Siege', 'Unentschieden', 'Niederlagen',\
+                'Tore', 'Gegentore', 'Differenz', 'Punkte'] ] \
+                = table[ ['Spiele', 'Siege', 'Unentschieden', \
+                              'Niederlagen', 'Tore', 'Gegentore', 'Differenz', 'Punkte'] ].astype(int)
+    
+    return table
+    
+
 ###########################################################
 # Helper functions ########################################
 ###########################################################
@@ -280,6 +383,34 @@ def _get_season_string(year):
     assert len(year_p1) == 2 # make sure that we have a proper date string
     return str(year)+'-'+year_p1
     
+def _get_goals( ergebnis ):
+    '''
+    get goals from results string
+    example: 3:2 (0:1) - > '3', '3', '0', '1'
+    '''
+    #print ergebnis
+    pos = ergebnis.find('(')
+    if pos != -1:
+        endergebnis = ergebnis[:pos-1]
+        sep = endergebnis.find(':')
+        heim_tore = endergebnis[:sep]
+        gast_tore = endergebnis[sep+1:]
+        pos2 = ergebnis.find(')')
+        halbzeitstand = ergebnis[pos+1:pos2]
+        sep = halbzeitstand.find(':')
+        heim_tore_h = halbzeitstand[:sep]
+        gast_tore_h = halbzeitstand[sep+1:]
+    else: # no half time result
+        endergebnis = ergebnis
+        sep = endergebnis.find(':')
+        heim_tore = endergebnis[:sep]
+        gast_tore = endergebnis[sep+1:]
+        heim_tore_h = '-'
+        gast_tore_h = '-'
+        
+    return heim_tore, gast_tore, heim_tore_h, gast_tore_h
 
 
 
+if __name__ == '__main__':
+    get_table(type='total')

@@ -33,6 +33,12 @@
     creates players.dat with information for each player. This is very 
     useful for player selection in the analysis part
     
+*** get_seasons()
+    generates a file for each season from 1963 to today with results of all
+    the games.
+    saves a file for each season with columns
+    Spieltag, Tag, Datum, Zeitm, Heim, Gast, Tore (H), Tore (A), Tore Hz (H),
+    Tore Hz (A)
 * TODO Data analysis
 ** TODO Data sheets
     - clean up files (there are some enyoing underscores)
